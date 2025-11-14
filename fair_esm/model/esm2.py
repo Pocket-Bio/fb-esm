@@ -4,11 +4,17 @@
 # LICENSE file in the root directory of this source tree.
 
 from typing import Union
+
+import fair_esm
 import torch
 import torch.nn as nn
 
-import esm
-from esm.modules import ContactPredictionHead, ESM1bLayerNorm, RobertaLMHead, TransformerLayer
+from fair_esm.modules import (
+    ContactPredictionHead,
+    ESM1bLayerNorm,
+    RobertaLMHead,
+    TransformerLayer,
+)
 
 
 class ESM2(nn.Module):
@@ -17,15 +23,15 @@ class ESM2(nn.Module):
         num_layers: int = 33,
         embed_dim: int = 1280,
         attention_heads: int = 20,
-        alphabet: Union[esm.data.Alphabet, str] = "ESM-1b",
+        alphabet: Union[fair_esm.data.Alphabet, str] = "ESM-1b",
         token_dropout: bool = True,
     ):
         super().__init__()
         self.num_layers = num_layers
         self.embed_dim = embed_dim
         self.attention_heads = attention_heads
-        if not isinstance(alphabet, esm.data.Alphabet):
-            alphabet = esm.data.Alphabet.from_architecture(alphabet)
+        if not isinstance(alphabet, fair_esm.data.Alphabet):
+            alphabet = fair_esm.data.Alphabet.from_architecture(alphabet)
         self.alphabet = alphabet
         self.alphabet_size = len(alphabet)
         self.padding_idx = alphabet.padding_idx
@@ -74,7 +80,9 @@ class ESM2(nn.Module):
             weight=self.embed_tokens.weight,
         )
 
-    def forward(self, tokens, repr_layers=[], need_head_weights=False, return_contacts=False):
+    def forward(
+        self, tokens, repr_layers=[], need_head_weights=False, return_contacts=False
+    ):
         if return_contacts:
             need_head_weights = True
 
@@ -88,7 +96,9 @@ class ESM2(nn.Module):
             # x: B x T x C
             mask_ratio_train = 0.15 * 0.8
             src_lengths = (~padding_mask).sum(-1)
-            mask_ratio_observed = (tokens == self.mask_idx).sum(-1).to(x.dtype) / src_lengths
+            mask_ratio_observed = (tokens == self.mask_idx).sum(-1).to(
+                x.dtype
+            ) / src_lengths
             x = x * (1 - mask_ratio_train) / (1 - mask_ratio_observed)[:, None, None]
 
         if padding_mask is not None:
@@ -134,7 +144,9 @@ class ESM2(nn.Module):
             attentions = torch.stack(attn_weights, 1)
             if padding_mask is not None:
                 attention_mask = 1 - padding_mask.type_as(attentions)
-                attention_mask = attention_mask.unsqueeze(1) * attention_mask.unsqueeze(2)
+                attention_mask = attention_mask.unsqueeze(1) * attention_mask.unsqueeze(
+                    2
+                )
                 attentions = attentions * attention_mask[:, None, None, :, :]
             result["attentions"] = attentions
             if return_contacts:

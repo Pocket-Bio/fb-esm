@@ -5,15 +5,12 @@
 
 import biotite.structure
 import numpy as np
-import torch
-from typing import Sequence, Tuple, List
 
-from esm.inverse_folding.util import (
-    load_structure,
+from fair_esm.inverse_folding.util import (
     extract_coords_from_structure,
-    load_coords,
-    get_sequence_loss,
     get_encoder_output,
+    get_sequence_loss,
+    load_structure,
 )
 
 
@@ -77,8 +74,9 @@ def _concatenate_coords(coords, target_chain_id, padding_length=10):
     return coords_concatenated
 
 
-def sample_sequence_in_complex(model, coords, target_chain_id, temperature=1.,
-        padding_length=10):
+def sample_sequence_in_complex(
+    model, coords, target_chain_id, temperature=1.0, padding_length=10
+):
     """
     Samples sequence for one chain in a complex.
     Args:
@@ -95,17 +93,19 @@ def sample_sequence_in_complex(model, coords, target_chain_id, temperature=1.,
     device = next(model.parameters()).device
 
     # Supply padding tokens for other chains to avoid unused sampling for speed
-    padding_pattern = ['<pad>'] * all_coords.shape[0]
+    padding_pattern = ["<pad>"] * all_coords.shape[0]
     for i in range(target_chain_len):
-        padding_pattern[i] = '<mask>'
-    sampled = model.sample(all_coords, partial_seq=padding_pattern,
-            temperature=temperature, device=device)
+        padding_pattern[i] = "<mask>"
+    sampled = model.sample(
+        all_coords, partial_seq=padding_pattern, temperature=temperature, device=device
+    )
     sampled = sampled[:target_chain_len]
     return sampled
 
 
-def score_sequence_in_complex(model, alphabet, coords, target_chain_id,
-        target_seq, padding_length=10):
+def score_sequence_in_complex(
+    model, alphabet, coords, target_chain_id, target_seq, padding_length=10
+):
     """
     Scores sequence for one chain in a complex.
     Args:
@@ -124,10 +124,10 @@ def score_sequence_in_complex(model, alphabet, coords, target_chain_id,
     """
     all_coords = _concatenate_coords(coords, target_chain_id)
 
-    loss, target_padding_mask = get_sequence_loss(model, alphabet, all_coords,
-            target_seq)
-    ll_fullseq = -np.sum(loss * ~target_padding_mask) / np.sum(
-            ~target_padding_mask)
+    loss, target_padding_mask = get_sequence_loss(
+        model, alphabet, all_coords, target_seq
+    )
+    ll_fullseq = -np.sum(loss * ~target_padding_mask) / np.sum(~target_padding_mask)
 
     # Also calculate average when excluding masked portions
     coord_mask = np.all(np.isfinite(coords[target_chain_id]), axis=(-1, -2))
