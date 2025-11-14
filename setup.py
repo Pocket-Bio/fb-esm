@@ -6,7 +6,7 @@
 from setuptools import setup
 
 
-with open("esm/version.py") as infile:
+with open("fair_esm/version.py") as infile:
     exec(infile.read())
 
 with open("README.md") as f:
